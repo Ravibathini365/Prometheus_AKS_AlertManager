@@ -1,0 +1,64 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+
+data:
+  config.yml: |-
+    global:
+    templates:
+    - '/etc/alertmanager/*.tmpl'
+    route:
+      group_by: [alertname, instance, date]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 24h
+      receiver: 'infra-email'
+      routes:
+      - receiver: infra-email
+        match_re:
+          severity: critical|warning
+        continue: true
+      - receiver: prometheus-msteams
+        match_re:
+          severity: critical|warning
+        continue: true
+      - receiver: jiralert
+        match_re:
+          severity: critical|warning
+        continue: true
+      - receiver: opsgenie-infra-l1
+        match_re:
+          severity: critical
+        continue: true
+
+    receivers:
+    - name: opsgenie-infra-l1
+      opsgenie_configs:
+      - api_key: 'd9abff5b-b2d6-47ca-84e2-7d0e4aec0ca9'
+        api_url: 'https://api.opsgenie.com/'
+        description: 'Via Alertmanager'
+        priority: P3
+    - name: infra-email
+      email_configs:
+      - send_resolved: true
+        to: occi@lb.com
+        from: vsetoinfra.alertmanager@lb.com
+        hello: localhost
+        smarthost: colexchrelay.limitedbrands.com:25
+        headers:
+          From: vsetoinfra.alertmanager@lb.com
+          Subject: 'ALERT'
+          To: occi@lb.com
+        require_tls: false
+
+    - name:  prometheus-msteams
+      webhook_configs:
+      - send_resolved: true
+        url: 'http://prometheus-msteams.monitoring.svc.cluster.local:2000/alertmanager'
+
+    - name:  'jiralert'
+      webhook_configs:
+      - send_resolved: false
+        url: 'http://10.3.8.134:9097/alert'

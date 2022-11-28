@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      name: alertmanager
+      labels:
+        app: alertmanager
+    spec:
+      containers:
+      - name: alertmanager
+        image: vscojfrogrhel.vsazure.com/infra-images/alertmanagercentralus:latest
+        args:
+          - "--config.file=/etc/alertmanager/config.yml"
+          - "--storage.path=/alertmanager"
+          #- "--web.external-url=http://etoprometheusalertmanager.etocore.eastus2.vsazure.com"
+        ports:
+        - name: alertmanager
+          containerPort: 9093
+        resources:
+            requests:
+              cpu: 500m
+              memory: 500M
+            limits:
+              cpu: 1
+              memory: 1Gi
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/alertmanager
+        - name: templates-volume
+          mountPath: /etc/alertmanager-templates
+        - name: alertmanager
+          mountPath: /alertmanager
+      imagePullSecrets:
+      - name: etocoreinfra-secret  
+      volumes:
+      - name: config-volume
+        configMap:
+          name: alertmanager-config
+      - name: templates-volume
+        configMap:
+          name: alertmanager-templates
+      - name: alertmanager
+        emptyDir: {}

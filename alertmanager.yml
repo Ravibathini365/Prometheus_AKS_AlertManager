@@ -1,0 +1,45 @@
+route:
+  group_by: ['alertname']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 24h
+  receiver: 'infra-email'
+  routes:
+  - receiver: infra-email
+    match_re:
+      severity: critical|warning
+    continue: true
+  - receiver: prometheus-msteams
+    match_re:
+      severity: critical|warning
+    continue: true
+  - receiver: jiralert
+    match_re:
+      severity: critical|warning
+    continue: true
+
+receivers:
+- name: infra-email
+  email_configs:
+  - send_resolved: true
+    to: occi@lb.com
+    from: vsetoinfra.alertmanager@lb.com
+    hello: localhost
+    smarthost: colexchrelay.limitedbrands.com:25
+    headers:
+      From: vsetoinfra.alertmanager@lb.com
+      Subject: 'ALERT'
+      To: occi@lb.com
+    require_tls: false
+
+- name: prometheus-msteams
+  webhook_configs: 
+  - send_resolved: true
+    url: 'http://prometheus-msteams.monitoring.svc.cluster.local:2000/alertmanager'
+#    url: 'http://10.3.9.89:2000/_dynamicwebhook/lbrands.webhook.office.com/webhookb2/ea03a849-6aa9-41b7-8489-11920a693d3f@865f3fef-b96b-4b1d-a7b6-0b4b3fcfc87e/IncomingWebhook/6c932733300e46fe9dd3824f6747a526/7433bfe8-a996-4097-b0a6-b766782899d1' # the prometheus-msteams proxy + "/_dynamicwebhook/" + webhook url (without prefix "https://")
+    # new created webhooks have a different format: https://yourtenant.webhook.office.com/webhookb2/xxx...
+
+- name:  'jiralert'
+  webhook_configs:
+    url: 'http://10.3.9.212:9097/alert'
+    send_resolved: false
